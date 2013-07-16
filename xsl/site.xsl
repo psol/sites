@@ -19,6 +19,7 @@
    <xsl:include href="i8n.xsl"/>
 
    <xsl:variable name="lang" select="/h:html/@lang"/>
+   <xsl:variable name="alt-langs" select="/h:html/h:head/h:link[@rel = 'alternate' and @hreflang]/@hreflang"/>
 
    <xsl:template match="/">
       <html>
@@ -30,31 +31,38 @@
             <p>I have published the following files:</p>
             <ul>
                <xsl:for-each select="h:html/h:body/h:article">
-                  <li><a href="html/{$lang}/{f:fix-href(f:article-name(.), 'anchor')}"><xsl:value-of select="if(string-length(@title) lt 1) then '...' else @title"/></a></li>
+                  <li><a href="{f:fix-href(f:article-name(.), 'result-document', $lang)}"><xsl:value-of select="if(string-length(@title) lt 1) then '...' else @title"/></a></li>
                </xsl:for-each>
             </ul>
+            <xsl:if test="h:html/h:head/h:link[@rel = 'alternate' and @hreflang]">
+               <p>See also the alternate versions:</p>
+               <ul>
+                  <xsl:for-each select="h:html/h:head/h:link[@rel = 'alternate' and @hreflang]">
+                     <li><a href="{substring-before(@href, '.xhtml')}.html"><xsl:value-of select="@title"/></a></li>
+                  </xsl:for-each>
+               </ul>
+            </xsl:if>
          </body>
       </html>
-      <xsl:apply-templates/>
-   </xsl:template>
-
-   <xsl:template match="h:html | h:body">
-      <xsl:apply-templates/>
+      <xsl:apply-templates select="h:html/h:body/h:article"/>
    </xsl:template>
 
    <xsl:template match="h:body/h:article">
       <!-- REFACTOR: need to move the name generation completely in fix-href with, say document context -->
-      <xsl:result-document href="{f:fix-href(concat('html/', $lang, '/', f:article-name(.)), 'anchor')}">
+      <xsl:result-document href="{f:fix-href(f:article-name(.), 'result-document', $lang)}">
          <!-- very much a hack but xsl:output does not like it when I try to specify a doctype without public or system id… -->
          <xsl:text disable-output-escaping='yes'><![CDATA[<!DOCTYPE html>]]>
 </xsl:text>
-         <xsl:variable name="alt-exists" select="f:alt-exists(., $lang)" as="xs:boolean"/>
+         <xsl:variable name="self" select="."/>
+         <xsl:variable name="alt-list" select="for $l in /h:html/h:head/h:link[@rel = 'alternate' and @hreflang] return if (f:alt-exists($self, $l/@href)) then ($l/@hreflang) else ()"/>
          <html lang="{$lang}">
-            <xsl:apply-templates select="." mode="head"/>
+            <xsl:apply-templates select="." mode="head">
+               <xsl:with-param name="alt-list" select="$alt-list" tunnel="yes"/>
+            </xsl:apply-templates>
             <body class="home page page-id-2 page-template page-template-template-home-php boxed safari">
                <div id="wrapper">
                   <xsl:apply-templates select="." mode="header">
-                     <xsl:with-param name="alt-exists" select="$alt-exists" tunnel="yes"/>
+                     <xsl:with-param name="alt-list" select="$alt-list" tunnel="yes"/>
                   </xsl:apply-templates>
                   <xsl:apply-templates select="h:ul[f:contains(@class, 'slider')]" mode="slider"/>
                   <xsl:apply-templates select="." mode="body"/>
@@ -67,6 +75,7 @@
    </xsl:template>
 
    <xsl:template match="h:article" mode="head">
+      <xsl:param name="alt-list" tunnel="yes" select="()" as="xs:string*"/>
       <head>            
          <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
          <title><xsl:value-of select="@title"/></title>
@@ -74,41 +83,48 @@
             <meta name="author" content="Adrian Diaconescu">-->
          <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, width=device-width"/>
          <link rel="shortcut icon" href="/favicon.ico"/>
-         <link rel="stylesheet" type="text/css" href="{f:fix-href('style.css', 'css')}"/>
-         <link rel="stylesheet" type="text/css" href="{f:fix-href('responsive.css', 'css')}"/>
+         <link rel="stylesheet" type="text/css" href="{f:fix-href('style.css', 'css', $lang)}"/>
+         <link rel="stylesheet" type="text/css" href="{f:fix-href('responsive.css', 'css', $lang)}"/>
          <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,300italic,400italic,600italic,700italic|Noticia+Text|Lato:400,700" />
          <xsl:text disable-output-escaping='yes'><![CDATA[
 <!--[if IE]>
 <script src="]]></xsl:text>
-<xsl:value-of select="f:fix-href('html5.js', 'js')"/>
+<xsl:value-of select="f:fix-href('html5.js', 'js', $lang)"/>
 <xsl:text disable-output-escaping="yes"><![CDATA["></script>
 <![endif]-->
 ]]>
 </xsl:text>
-         <script type="text/javascript" src="{f:fix-href('twitter.js', 'js')}"></script>
-         <script type="text/javascript" src="{f:fix-href('jquery.js', 'js')}"></script>
-         <script type="text/javascript" src="{f:fix-href('mediaqueries.js', 'js')}"></script>                                        
+         <xsl:variable name="self" select="."/>
+         <xsl:for-each select="$alt-list">
+            <link href="{f:fix-href(f:article-name($self), 'alt-document', .)}" rel="alternate" hreflang="{.}"/>
+         </xsl:for-each>
+         <script type="text/javascript" src="{f:fix-href('twitter.js', 'js', $lang)}"></script>
+         <script type="text/javascript" src="{f:fix-href('jquery.js', 'js', $lang)}"></script>
+         <script type="text/javascript" src="{f:fix-href('mediaqueries.js', 'js', $lang)}"></script>                                        
       </head>
    </xsl:template>
 
    <xsl:template match="h:article" mode="header">
-      <xsl:param name="alt-exists" tunnel="yes" select="false()" as="xs:boolean"/>
+      <xsl:param name="alt-list" tunnel="yes" select="()" as="xs:string*"/>
       <header id="mainheader">
          <div class="container">
             <div id="mainheader-links">
                <nav>
                   <ul id="menu-header-links" class="menu">
-                     <xsl:if test="$alt-exists">
-                        <li id="menu-item-{generate-id()}" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-{generate-id()}"><a href="{f:fix-href(f:article-name(.), 'alt-document', $lang)}"><xsl:value-of select="f:localize('altLang', $lang)"/></a></li>
-                     </xsl:if>
-                     <li id="menu-item-{generate-id()}" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-{generate-id()}"><a href="{f:fix-href('contact', 'anchor')}"><xsl:value-of select="f:localize('askUs', $lang)"/></a></li>
+                     <xsl:variable name="head" select="/h:html/h:head"/>
+                     <xsl:variable name="self" select="."/>
+                     <xsl:for-each select="$alt-list">
+                        <xsl:variable name="l" select="."/>
+                        <li class="menu-item menu-item-type-custom menu-item-object-custom"><a href="{f:fix-href(f:article-name($self), 'alt-document', $l)}"><xsl:value-of select="$head/h:link[@rel = 'alternate' and @hreflang = $l]/@title"/></a></li>
+                     </xsl:for-each>
+                     <li id="menu-item-{generate-id()}" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-{generate-id()}"><a href="{f:fix-href('contact', 'anchor', $lang)}"><xsl:value-of select="f:localize('askUs', $lang)"/></a></li>
                   </ul>
                </nav>
                <p><strong><xsl:value-of select="f:localize('callUs', $lang)"/></strong> + 32 81 226 270 / <strong><xsl:value-of select="f:localize('twitter', $lang)"/></strong><a href="http://twitter.com/declencheur">@declencheur</a></p>
             </div>
             <div id="logo">				
                <hgroup>
-                  <h1><a href="{f:fix-href('index', 'anchor')}"><img src="{f:fix-href('pineapplesoft-small.png', 'img')}" alt="Pineapplesoft"/></a></h1>
+                  <h1><a href="{f:fix-href('index', 'anchor', $lang)}"><img src="{f:fix-href('pineapplesoft-small.png', 'img', $lang)}" alt="Pineapplesoft"/></a></h1>
                </hgroup>	
             </div>
          </div>	
@@ -119,11 +135,11 @@
                   <ul id="menu-main-menu" class="sf-menu">
                      <xsl:variable name="self" select="." as="element()"/>
                      <xsl:for-each select="../h:article[@data-menu]">
-                        <li class="menu-item menu-item-type-post_type menu-item-object-page{if (. = $self) then ' current-menu-item page-item-2 current_page_item' else ''}"><a href="{f:fix-href(f:article-name(.), 'anchor')}"><xsl:value-of select="@data-menu"/></a></li>
+                        <li class="menu-item menu-item-type-post_type menu-item-object-page{if (. = $self) then ' current-menu-item page-item-2 current_page_item' else ''}"><a href="{f:fix-href(f:article-name(.), 'anchor', $lang)}"><xsl:value-of select="@data-menu"/></a></li>
                      </xsl:for-each>
                   </ul>
                   <form method="get" id="searchbox" action="http://www.google.com/search" role="search">
-                     <input type="text" class="field" name="s" id="s" placeholder="Recherche &#8230;" />
+                     <input type="text" class="field" name="s" id="s" placeholder="{f:localize('search', $lang)}" />
                      <input name="sitesearch" type="hidden" value="www.psol.be"/>
                      <input type="hidden" id="searchsubmit" />
                   </form>
@@ -142,39 +158,26 @@
                   <div class="postlist">			
                      <ul>
                         <xsl:for-each select="../h:article[f:contains(@class, 'cv')]">
-                           <li><a href="{f:fix-href(f:sanitize-id(@id), 'anchor')}"><xsl:value-of select="h:h1"/></a></li>
+                           <li><a href="{f:fix-href(f:sanitize-id(@id), 'anchor', $lang)}"><xsl:value-of select="h:h1"/></a></li>
                         </xsl:for-each>
                      </ul>			
                   </div>
                </div>
-               <div id="tweets-2" class="column fourcol widget widget_tweets">
-                  <h3 class="widget-title">Derniers Tweets</h3>
-                  <div class="tweetlist" id="tweetlist_66">
-                     <ul>
-                        <li>Loading tweets ...</li>
-                     </ul>	
-                  </div>
-                  <script type="text/javascript">
-                     jQuery(document).ready(function($){
-                     $.getJSON('http://api.twitter.com/1/statuses/user_timeline/declencheur.json?count=2',
-                     function(tweets) {
-                     $("#tweetlist_66 ul").html(twitterCallback2(tweets));
-                     });
-                     });
-                  </script>
-                  <p><a href="http://twitter.com/declencheur" class="morelink"><xsl:value-of select="f:localize('followUs', $lang)"/></a></p></div>
+               <div id="tweets-2" class="column fourcol widget widget_text">
+                  <xsl:variable name="contact" select="../h:footer[f:contains(@class, 'contact')]/h:div[f:contains(@class, 'alpha')]"/>
+                  <h3 class="widget-title"><xsl:value-of select="$contact/@title"/></h3>
+                  <xsl:apply-templates select="$contact"/>
+               </div>
                <div id="text-2" class="column fourcol widget widget_text">
-                  <h3 class="widget-title"><xsl:value-of select="f:localize('contactUs', $lang)"/></h3>			
-                  <div class="textwidget">
-                     <p><xsl:value-of select="f:localize('postalAddress', $lang)" disable-output-escaping="yes"/></p>
-                     <p><xsl:value-of select="f:localize('phone', $lang)"/></p>
-                     <p><a href="{f:fix-href('contact', 'anchor')}"><xsl:value-of select="f:localize('email', $lang)"/></a></p>
-                  </div>
+                  <xsl:variable name="contact" select="../h:footer[f:contains(@class, 'contact')]/h:div[f:contains(@class, 'omega')]"/>
+                  <h3 class="widget-title"><xsl:value-of select="$contact/@title"/></h3>			
+                  <xsl:apply-templates select="$contact"/>
                </div>
             </section>
             <div id="mainfooter-links">
-               <p>Mise à jour : <xsl:value-of select="format-date(current-date(), '[MNn]', 'fr', (), ())"/><xsl:text> </xsl:text><xsl:value-of select="format-date(current-date(), '[Y]')"/></p>
-               <p>&#169; 1995 - <xsl:value-of select="format-date(current-date(), '[Y]')"/>, Pineapplesoft sprl. <xsl:value-of select="f:localize('rightsReserved', $lang)"/></p>
+               <xsl:variable name="published" select="if(h:time[contains(@class, 'dc.date')]) then h:time[contains(@class, 'dc.date')] else /h:html/h:head/h:meta[@name = 'dc.date']/@content"/>
+               <p><xsl:value-of select="f:localize('lastModified', $lang)"/><xsl:value-of select="format-date($published, '[MNn]', $lang, (), ())"/><xsl:text> </xsl:text><xsl:value-of select="format-date($published, '[Y]', $lang, (), ())"/></p>
+               <p>&#169; 1995 - <xsl:value-of select="format-date(current-date(), '[Y]', $lang, (), ())"/>, Pineapplesoft sprl. <xsl:value-of select="f:localize('rightsReserved', $lang)"/></p>
                <!--
                   <nav>
                         <ul id="menu-footer-links" class="menu"><li id="menu-item-1862" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-1862"><a href="#">Terms &#038; Conditions</a></li>
@@ -189,18 +192,18 @@
    </xsl:template>
 
    <xsl:template match="h:article" mode="scripts">
-      <script type="text/javascript" src="{f:fix-href('jquery.ui.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.superfish.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.supersubs.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.flexslider.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.roundabout.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.caroufredsel.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.fancybox.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.imagesloaded.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.isotope.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.fitvids.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('jquery.tiptip.js', 'js')}"></script>
-      <script type="text/javascript" src="{f:fix-href('theme.js', 'js')}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.ui.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.superfish.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.supersubs.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.flexslider.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.roundabout.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.caroufredsel.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.fancybox.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.imagesloaded.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.isotope.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.fitvids.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('jquery.tiptip.js', 'js', $lang)}"></script>
+      <script type="text/javascript" src="{f:fix-href('theme.js', 'js', $lang)}"></script>
    </xsl:template>
 
    <xsl:template match="h:article[f:is-home(.)]" mode="body">
@@ -267,12 +270,12 @@
          <p></p>
          <div class="snippets snippets-person list list isotope">
             <xsl:for-each select="../../h:article[f:contains(@class, 'cv')]">
-               <xsl:variable name="href" select="f:fix-href(f:article-name(.) , 'anchor')"/>
+               <xsl:variable name="href" select="f:fix-href(f:article-name(.) , 'anchor', $lang)"/>
                <xsl:variable name="name" select="*[f:contains(@class, 'fn')]"/>
                <div class="board-of-directors shareholders snippet isotope-item">
                   <div class="column twocol">
                      <div class="imgholder">
-                        <div><img src="{f:fix-href(h:img[f:contains(@class, 'photo')]/@src, 'img')}" class="attachment-page-thumb wp-post-image"
+                        <div><img src="{f:fix-href(h:img[f:contains(@class, 'photo')]/@src, 'img', $lang)}" class="attachment-page-thumb wp-post-image"
                            alt="{$name}"/><a href="{$href}" class="imghover"><xsl:value-of select="f:localize('viewLarge', $lang)"></xsl:value-of></a></div>
                      </div>
                   </div>
@@ -349,14 +352,15 @@
    </xsl:template>
 
    <xsl:template match="h:a/@href">
-      <xsl:attribute name="href" select="f:fix-href(., 'anchor')"/>
+      <xsl:attribute name="href" select="f:fix-href(., 'anchor', $lang)"/>
    </xsl:template>
 
    <xsl:template match="h:img/@src">
-      <xsl:attribute name="src" select="f:fix-href(., 'img')"/>
+      <xsl:attribute name="src" select="f:fix-href(., 'img', $lang)"/>
    </xsl:template>
 
    <xsl:template match="h:article[f:contains(@class, 'cv')]" mode="body">
+      <!-- TODO: manque le "callout" -->
       <div class="container">
          <div class="row">
             <div id="content" class="column ninecol">
@@ -373,7 +377,7 @@
                         <div class="row">
                            <div class="column twocol"><strong><xsl:value-of select="f:localize('contactCV', $lang)"/></strong></div>
                            <div class="column sevencol social">
-                              <a href="{f:fix-href('contact', 'anchor')}"><img src="{f:fix-href('ico_email.png', 'design')}"/></a>
+                              <a href="{f:fix-href('contact', 'anchor', $lang)}"><img src="{f:fix-href('ico_email.png', 'design', $lang)}"/></a>
                               <xsl:apply-templates select="h:a[@rel='linkedin']" mode="social"/>
                               <xsl:apply-templates select="h:a[@rel='facebook']" mode="social"/>
                               <xsl:apply-templates select="h:a[@rel='twitter']" mode="social"/>
@@ -398,7 +402,7 @@
                                  <xsl:value-of select="*[f:contains(@class, 'fn')]"/>
                               </xsl:when>
                               <xsl:otherwise>
-                                 <a href="{f:fix-href(f:article-name(.), 'anchor')}"><xsl:value-of select="*[f:contains(@class, 'fn')]"/></a>
+                                 <a href="{f:fix-href(f:article-name(.), 'anchor', $lang)}"><xsl:value-of select="*[f:contains(@class, 'fn')]"/></a>
                               </xsl:otherwise>
                            </xsl:choose>
                         </li>
@@ -410,7 +414,7 @@
                   </ul>
                </nav>
                <div class="imgholder">
-                  <div><img src="{f:fix-href(h:img[f:contains(@class, 'photo')]/@src, 'img')}" class="attachment-page-thumb wp-post-image" alt="{*[f:contains(@class, 'fn')]}"/></div>
+                  <div><img src="{f:fix-href(h:img[f:contains(@class, 'photo')]/@src, 'img', $lang)}" class="attachment-page-thumb wp-post-image" alt="{*[f:contains(@class, 'fn')]}"/></div>
                </div>
             </aside>
          </div>
@@ -502,17 +506,22 @@
    </xsl:template>
 
    <xsl:template match="h:a[@rel='linkedin']" mode="social">
-      <a href="{@href}"><img src="{f:fix-href('ico_linkedin.png', 'design')}"/></a>
+      <a href="{@href}"><img src="{f:fix-href('ico_linkedin.png', 'design', $lang)}"/></a>
    </xsl:template>
 
    <xsl:template match="h:a[@rel='facebook']" mode="social">
-      <a href="{@href}"><img src="{f:fix-href('ico_facebook.png', 'design')}"/></a>
+      <a href="{@href}"><img src="{f:fix-href('ico_facebook.png', 'design', $lang)}"/></a>
+   </xsl:template>
+
+   <xsl:template match="h:a[@rel='twitter']" mode="social">
+      <a href="{@href}"><img src="{f:fix-href('ico_twitter.png', 'design', $lang)}"/></a>
    </xsl:template>
 
    <xsl:template match="h:form">
       <div class="wpcf7" id="wpcf7-{generate-id()}">
          <form action="/cgi-sys/cgiemail/contact2.txt" method="post" class="wpcf7-form">
-            <div style="display: none;"><input value="{f:fix-href('success', 'anchor')}" name="success" type="hidden"/></div>
+            <!-- TODO fix this to create a local success file… -->
+            <div style="display: none;"><input value="http://psol.be/v5/success.html" name="success" type="hidden"/></div>
             <xsl:apply-templates/>
             <div class="wpcf7-response-output wpcf7-display-none"></div>
          </form>

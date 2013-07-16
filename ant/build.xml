@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir=".." default="resources" name="ResourcesManager">
+   <target name="resources">
+      <copy todir="output/html/img/2013/" overwrite="true" failonerror="true">
+         <fileset dir="resources/img"/>
+      </copy>
+    <copy todir="output/html/template/2013/" overwrite="true" failonerror="true">
+     <fileset dir="resources/template"/>
+    </copy>
+    <!-- files that should not be stored in GIT,
+         e.g. contain emails, keys, passwords, etc. -->
+    <copy todir="output/html/" overwrite="true" failonerror="true">
+     <fileset file="gitignore/contact2.txt"/>
+    </copy>
+   </target> 
+</project>

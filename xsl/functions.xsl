@@ -13,22 +13,22 @@
    <xsl:function name="f:fix-href" as="xs:string">
       <xsl:param name="href" as="xs:string"/>
       <xsl:param name="context" as="xs:string"/>
-      <xsl:value-of select="f:fix-href($href, $context, $lang)"/>
-   </xsl:function>
-
-   <xsl:function name="f:fix-href" as="xs:string">
-      <xsl:param name="href" as="xs:string"/>
-      <xsl:param name="context" as="xs:string"/>
       <xsl:param name="lang" as="xs:string"/>
       <xsl:variable name="result">
          <xsl:choose>
-            <xsl:when test="$context = 'img'">../img/<xsl:value-of select="$href"/></xsl:when>
-            <xsl:when test="empty($href) and $context = 'anchor'">index.html</xsl:when>
-            <xsl:when test="$context = 'anchor'"><xsl:value-of select="$href"/>.html</xsl:when>
-            <xsl:when test="$context = 'css'">../template/<xsl:value-of select="$href"/></xsl:when>
-            <xsl:when test="$context = 'js'">../template/scripts/<xsl:value-of select="$href"/></xsl:when>
-            <xsl:when test="$context = 'design'">../template/images/<xsl:value-of select="$href"/></xsl:when>
-            <xsl:when test="$context = 'alt-document' and string-length($lang) gt 0">../<xsl:value-of select="f:alt-lang($lang, 'code')"/>/<xsl:value-of select="$href"/>.html</xsl:when>
+            <xsl:when test="$context = 'img'">../img/2013/<xsl:value-of select="$href"/></xsl:when>
+            <xsl:when test="empty($href) and $context = 'anchor'">../<xsl:value-of select="$lang"/></xsl:when>
+            <xsl:when test="$context = 'anchor'">
+               <xsl:choose>
+                  <xsl:when test="$href ne 'index'"><xsl:value-of select="$href"/>.html</xsl:when>
+                  <xsl:otherwise>../<xsl:value-of select="$lang"/></xsl:otherwise>
+               </xsl:choose>
+            </xsl:when>
+            <xsl:when test="$context = 'css'">../template/2013/<xsl:value-of select="$href"/></xsl:when>
+            <xsl:when test="$context = 'js'">../template/2013/scripts/<xsl:value-of select="$href"/></xsl:when>
+            <xsl:when test="$context = 'design'">../template/2013/images/<xsl:value-of select="$href"/></xsl:when>
+            <xsl:when test="$context = 'result-document' and string-length($lang) gt 0">html/<xsl:value-of select="$lang"/>/<xsl:value-of select="$href"/>.html</xsl:when>
+            <xsl:when test="$context = 'alt-document' and string-length($lang) gt 0">../<xsl:value-of select="$lang"/>/<xsl:if test="$href ne 'index'"><xsl:value-of select="$href"/>.html</xsl:if></xsl:when>
             <xsl:otherwise><xsl:message>Invalid href context</xsl:message><xsl:value-of select="$href"/></xsl:otherwise>
          </xsl:choose>
       </xsl:variable>
@@ -62,8 +62,8 @@
 
    <xsl:function name="f:alt-exists" as="xs:boolean">
       <xsl:param name="article" as="element(h:article)"/>
-      <xsl:param name="lang" as="xs:string"/>
-      <xsl:variable name="fname" select="f:alt-lang($lang, 'xml')"/>
+      <xsl:param name="href" as="xs:string"/>
+      <xsl:variable name="fname" select="concat('../xml/', $href)"/>
       <xsl:choose>
          <xsl:when test="not($article/@id) and empty($article/preceding-sibling::h:article[not(@id) or @id = 'index'])">
             <xsl:value-of select="true()"/>
@@ -74,15 +74,11 @@
       </xsl:choose>
    </xsl:function>
 
-   <xsl:function name="f:alt-lang" as="xs:string">
-      <xsl:param name="lang" as="xs:string"/>
-      <xsl:param name="context" as="xs:string"/>
+   <xsl:function name="f:interpret-time" as="xs:integer">
+      <xsl:param name="time" as="element(h:time)*"/>
       <xsl:choose>
-         <xsl:when test="$context = 'code' and $lang = 'fr'">en</xsl:when>
-         <xsl:when test="$context = 'code' and $lang = 'en'">fr</xsl:when>
-         <xsl:when test="$context = 'xml' and $lang = 'fr'">../xml/english.xhtml</xsl:when>
-         <xsl:when test="$context = 'xml' and $lang = 'en'">../xml/français.xhtml</xsl:when>
-         <xsl:otherwise><xsl:message>Unknown alt context</xsl:message><xsl:value-of select="$lang"/></xsl:otherwise>
+         <xsl:when test="empty($time)">0</xsl:when>
+         <xsl:otherwise><xsl:value-of select="if ($time/@datetime) then number(substring-before($time/@datetime, '-')) else number($time)"/></xsl:otherwise>
       </xsl:choose>
    </xsl:function>
 

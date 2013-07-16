@@ -2,18 +2,12 @@
 <resources xmlns="http://psol.com/2013/i8n">
    <list xml:lang="fr">
       <string id="askUs">Demandez une offre</string>
-      <string id="callUs">Appelez-nous : </string>
+      <string id="callUs">Appelez-nous aujourd'hui : </string>
       <string id="followUs">Suivez-nous →</string>
       <string id="contactUs">Contactez-nous</string>
       <string id="twitter">Twitter : </string>
       <string id="consultants">Nos consultants</string>
-      <string id="email">Electronique</string>
-      <string id="postalAddress"><![CDATA[Poste :<br />5 Rue Dewez<br />B-5000 Namur, Belgique]]></string>
-      <string id="phone">Tél : + 32 81 226 270</string>
       <string id="browse">Parcourir</string>
-      <string id="menuMain">Accueil</string>
-      <string id="menuConsultant">Equipe</string>
-      <string id="menuContact">Contact</string>
       <string id="rightsReserved">Tous droits réservés.</string>
       <string id="positionCV">Position</string>
       <string id="contactCV">Contact</string>
@@ -21,10 +15,25 @@
       <string id="resultCV">Resultat</string>
       <string id="consultantsCV">Consultants</string>
       <string id="viewLarge">Agrandir →</string>
-      <string id="altLang">English</string>
+      <string id="search">Recherche…</string>
+      <string id="lastModified">Mise à jour : </string>
    </list>
    <list xml:lang="en">
-      <string id="ask-us">Ask for a quote</string>
+      <string id="askUs">Ask for a quote</string>
+      <string id="callUs">Call us now: </string>
+      <string id="followUs">Follow us →</string>
+      <string id="contactUs">Contact-us</string>
+      <string id="twitter">Twitter: </string>
+      <string id="consultants">Our consultants</string>
+      <string id="browse">Browse</string>
+      <string id="rightsReserved">All rights reserved.</string>
+      <string id="positionCV">Position</string>
+      <string id="contactCV">Contact</string>
+      <string id="actionCV">Action</string>
+      <string id="resultCV">Result</string>
+      <string id="consultantsCV">Consultants</string>
       <string id="viewLarge">View Large →</string>
+      <string id="search">Search…</string>
+      <string id="lastModified">Last modified: </string>
    </list>
 </resources>
